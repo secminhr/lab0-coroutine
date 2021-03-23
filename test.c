@@ -3,8 +3,10 @@
 #include <stdio.h>
 
 int main() {
-    char *cmd = NULL;
+    /*char *cmd = NULL;
     while ((cmd = read_cmd()) != NULL) {
         printf("receive: %s\n", cmd);
     }
+    */
+    start();
 }
