@@ -3,10 +3,13 @@
 #include <termios.h>
 #include <string.h>
 #include <stdlib.h>
+#include <fcntl.h>
 #include "console.h"
 
+static int old_fd_flag;
 static int restore(int fd) {
     tcsetattr(fd, TCSAFLUSH, NULL);
+    fcntl(fd, F_SETFL, old_fd_flag);
 }
 
 #define ENTER 13
@@ -33,6 +36,9 @@ static int enableRawMode(int fd)
     /* put terminal in raw mode after flushing */
     if (tcsetattr(fd, TCSAFLUSH, &raw) < 0)
         goto fatal;
+    
+    old_fd_flag = fcntl(fd, F_GETFL, 0);
+    fcntl(fd, F_SETFL, old_fd_flag|O_NONBLOCK);
     return 0;
 
 fatal:
@@ -49,7 +55,10 @@ static int read_cmd_raw() {
         inRawMode = 1;
     }
     while (1) {
-        read(0, buf+size, 1);
+        int count = read(0, buf+size, 1);
+        if (count == -1) {
+            return -1;
+        }
         if ((*(buf+size)) == CTRL_C) {
             restore(0);
             exit(0);
@@ -66,6 +75,8 @@ static int read_cmd_raw() {
 }
 
 char *read_cmd() {
-    read_cmd_raw();
+    if (read_cmd_raw() == -1) {
+        return NULL;
+    }
     return buf;
 }
