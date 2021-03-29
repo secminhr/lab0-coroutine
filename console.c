@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include "console.h"
+#include "coroutine.h"
 
 static int old_fd_flag;
 static int restore(int fd) {
@@ -50,18 +51,16 @@ static char buf[10] = {0};
 static unsigned int size = 0;
 
 static int read_cmd_raw() {
+    cor_func
     if (!inRawMode) {
         enableRawMode(0);
         inRawMode = 1;
     }
     while (1) {
-        static int control = 0;
-        switch (control) {
-        case 0: {
+        cor_start
             int count = read(0, buf+size, 1);
             if (count == -1) {
-                control = 10;
-                return -1;
+                yield -1;
             }
             if ((*(buf+size)) == CTRL_C) {
                 restore(0);
@@ -69,19 +68,13 @@ static int read_cmd_raw() {
             } else if ((*(buf+size)) == ENTER) {
                 int tmp = size;
                 size = 0;
-                control = 10;
-                return tmp;
+                yield tmp;
             }
             size++;
             if (size == 10) {
-                control = 10;
-                return 9;
+                yield 9;
             }
-        }
-        case 10:
-            control = 0;
-            return -1;
-        }
+        cor_end_with_value(-1)
     }
 }
 

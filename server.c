@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include "server.h"
+#include "coroutine.h"
 
 #define LISTENQ  1024  /* second argument to listen() */
 #define MAXLINE 1024   /* max length of a line */
@@ -479,11 +480,9 @@ void process(int fd, struct sockaddr_in *clientaddr) {
 #endif
 }
 
-static int setup = 0;
 void start() {
-    if (setup) {
-        goto cor_start;
-    }
+    cor_func
+
 	struct sockaddr_in clientaddr;
 	int default_port = DEFAULT_PORT,
     	listenfd,
@@ -504,23 +503,14 @@ void start() {
 	// Ignore SIGPIPE signal, so if browser cancels the request, it
 	// won't kill the whole process.
 	signal(SIGPIPE, SIG_IGN);
-    setup = 1;
-cor_start:
 	while(1) {
-        static int control = 0;
-        switch (control) {
-        case 0: {
+        cor_start
             connfd = accept(listenfd, (SA *)&clientaddr, &clientlen);
             if (connfd != -1) {
                 process(connfd, &clientaddr);
                 close(connfd);
             }
-            control = 20;
-            return;
-        }
-        case 20:
-            control = 0;
-            return;
-        }
+            yield;
+        cor_end
     }
 }
