@@ -308,6 +308,9 @@ int open_listenfd(int port) {
 		return -1;
 	}
 
+    int flag = fcntl(listenfd, F_GETFL, 0);
+    fcntl(listenfd, F_SETFL, flag | O_NONBLOCK);
+
 	/* Eliminates "Address already in use" error from bind. */
 	if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR,
 				   (const void *)&optval , sizeof(int)) < 0) {
@@ -499,7 +502,9 @@ void start() {
 	signal(SIGPIPE, SIG_IGN);
 	while(1) {
 		connfd = accept(listenfd, (SA *)&clientaddr, &clientlen);
-		process(connfd, &clientaddr);
-		close(connfd);
-	}
+        if (connfd != -1) {
+            process(connfd, &clientaddr);
+            close(connfd);
+        }
+    }
 }
