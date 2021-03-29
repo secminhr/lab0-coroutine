@@ -55,21 +55,32 @@ static int read_cmd_raw() {
         inRawMode = 1;
     }
     while (1) {
-        int count = read(0, buf+size, 1);
-        if (count == -1) {
+        static int control = 0;
+        switch (control) {
+        case 0: {
+            int count = read(0, buf+size, 1);
+            if (count == -1) {
+                control = 10;
+                return -1;
+            }
+            if ((*(buf+size)) == CTRL_C) {
+                restore(0);
+                exit(0);
+            } else if ((*(buf+size)) == ENTER) {
+                int tmp = size;
+                size = 0;
+                control = 10;
+                return tmp;
+            }
+            size++;
+            if (size == 10) {
+                control = 10;
+                return 9;
+            }
+        }
+        case 10:
+            control = 0;
             return -1;
-        }
-        if ((*(buf+size)) == CTRL_C) {
-            restore(0);
-            exit(0);
-        } else if ((*(buf+size)) == ENTER) {
-            int tmp = size;
-            size = 0;
-            return tmp;
-        }
-        size++;
-        if (size == 10) {
-            return 9;
         }
     }
 }

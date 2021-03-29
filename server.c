@@ -479,7 +479,11 @@ void process(int fd, struct sockaddr_in *clientaddr) {
 #endif
 }
 
+static int setup = 0;
 void start() {
+    if (setup) {
+        goto cor_start;
+    }
 	struct sockaddr_in clientaddr;
 	int default_port = DEFAULT_PORT,
     	listenfd,
@@ -500,11 +504,23 @@ void start() {
 	// Ignore SIGPIPE signal, so if browser cancels the request, it
 	// won't kill the whole process.
 	signal(SIGPIPE, SIG_IGN);
+    setup = 1;
+cor_start:
 	while(1) {
-		connfd = accept(listenfd, (SA *)&clientaddr, &clientlen);
-        if (connfd != -1) {
-            process(connfd, &clientaddr);
-            close(connfd);
+        static int control = 0;
+        switch (control) {
+        case 0: {
+            connfd = accept(listenfd, (SA *)&clientaddr, &clientlen);
+            if (connfd != -1) {
+                process(connfd, &clientaddr);
+                close(connfd);
+            }
+            control = 20;
+            return;
+        }
+        case 20:
+            control = 0;
+            return;
         }
     }
 }
